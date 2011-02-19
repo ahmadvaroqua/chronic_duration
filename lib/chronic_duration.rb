@@ -1,75 +1,75 @@
 require 'numerizer'
 module ChronicDuration
   extend self
-  
+
   class DurationParseError < StandardError
   end
-  
+
   @@raise_exceptions = false
-  
+
   def self.raise_exceptions
     !!@@raise_exceptions
   end
-  
+
   def self.raise_exceptions=(value)
     @@raise_exceptions = !!value
   end
-  
+
   # Given a string representation of elapsed time,
   # return an integer (or float, if fractions of a
   # second are input)
   def parse(string)
     result = calculate_from_words(cleanup(string))
     result == 0 ? nil : result
-  end  
-  
+  end
+
   # Given an integer and an optional format,
   # returns a formatted string representing elapsed time
   def output(seconds, opts = {})
-    
+
     opts[:format] ||= :default
-    
+
     years = months = days = hours = minutes = 0
-    
+
     if seconds >= 60
-      minutes = (seconds / 60).to_i 
+      minutes = (seconds / 60).to_i
       seconds = seconds % 60
       if minutes >= 60
         hours = (minutes / 60).to_i
         minutes = (minutes % 60).to_i
-        if hours >= 24
-          days = (hours / 24).to_i
-          hours = (hours % 24).to_i
-          if days >= 30
-            months = (days / 30).to_i
-            days = (days % 30).to_i
-            if months >= 12
-              years = (months / 12).to_i
-              months = (months % 12).to_i
-            end
-          end
-        end
+        #if hours >= 24
+        #  days = (hours / 24).to_i
+        #  hours = (hours % 24).to_i
+        #  if days >= 30
+        #    months = (days / 30).to_i
+        #    days = (days % 30).to_i
+        #    if months >= 12
+        #      years = (months / 12).to_i
+        #      months = (months % 12).to_i
+        #    end
+        #  end
+        #end
       end
     end
-    
+
     joiner = ' '
     process = nil
-    
+
     case opts[:format]
     when :micro
-      dividers = { 
+      dividers = {
         :years => 'y', :months => 'm', :days => 'd', :hours => 'h', :minutes => 'm', :seconds => 's' }
       joiner = ''
     when :short
-      dividers = { 
+      dividers = {
         :years => 'y', :months => 'm', :days => 'd', :hours => 'h', :minutes => 'm', :seconds => 's' }
-    when :default 
+    when :default
       dividers = {
         :years => ' yr', :months => ' mo', :days => ' day', :hours => ' hr', :minutes => ' min', :seconds => ' sec',
         :pluralize => true }
-    when :long 
+    when :long
       dividers = {
-        :years => ' year', :months => ' month', :days => ' day', :hours => ' hour', :minutes => ' minute', :seconds => ' second', 
+        :years => ' year', :months => ' month', :days => ' day', :hours => ' hour', :minutes => ' minute', :seconds => ' second',
         :pluralize => true }
     when :chrono
       dividers = {
@@ -82,25 +82,58 @@ module ChronicDuration
         str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/^0/, '').gsub(/:$/, '')
       end
       joiner = ''
+    when :chrono_leading_zeros
+      dividers = {
+        :years => ':', :months => ':', :days => ':', :hours => ':', :minutes => ':', :seconds => ':', :keep_zero => true }
+        # :years => ':', :months => ':', :days => ':', :hours => ':', :minutes => ':', :seconds => ':', :keep_zero => false }
+      process = lambda do |str|
+        # Pad zeros
+        # Get rid of lead off times if they are zero
+        # Get rid of lead off zero
+        # Get rid of trailing :
+        # str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/^0/, '').gsub(/:$/, '')
+        str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/:$/, '')
+      end
+      joiner = ''
+    when :chrono_leading_zeros_no_seconds
+      dividers = {
+        :years => ':', :months => ':', :days => ':', :hours => ':', :minutes => ':', :seconds => ':', :keep_zero => true }
+      process = lambda do |str|
+        # Pad zeros
+        # Get rid of lead off times if they are zero
+        # Get rid of lead off zero
+        # Get rid of trailing :
+        # str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/^0/, '').gsub(/:$/, '')
+        str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/:$/, '')
+      end
+      joiner = ''
     end
-    
+
     result = []
-    [:years, :months, :days, :hours, :minutes, :seconds].each do |t|
-      result << humanize_time_unit( eval(t.to_s), dividers[t], dividers[:pluralize], dividers[:keep_zero] )
+
+    # Strip seconds if :chrono_leading_zeros_no_seconds
+    if opts[:format] == :chrono_leading_zeros_no_seconds
+      [:years, :months, :days, :hours, :minutes].each do |t|
+        result << humanize_time_unit( eval(t.to_s), dividers[t], dividers[:pluralize], dividers[:keep_zero] )
+      end
+    else
+      [:years, :months, :days, :hours, :minutes, :seconds].each do |t|
+        result << humanize_time_unit( eval(t.to_s), dividers[t], dividers[:pluralize], dividers[:keep_zero] )
+      end
     end
-    
+
     result = result.join(joiner).squeeze(' ').strip
-    
+
     if process
       result = process.call(result)
     end
-    
+
     result.length == 0 ? nil : result
 
   end
-  
+
 private
-  
+
   def humanize_time_unit(number, unit, pluralize, keep_zero)
     return '' if number == 0 && !keep_zero
     res = "#{number}#{unit}"
@@ -108,7 +141,7 @@ private
     res << 's' if !(number == 1) && pluralize
     res
   end
-  
+
   def calculate_from_words(string)
     val = 0
     words = string.split(' ')
@@ -119,18 +152,18 @@ private
     end
     val
   end
-  
+
   def cleanup(string)
     res = string.downcase
     res = filter_by_type(Numerizer.numerize(res))
     res = res.gsub(float_matcher) {|n| " #{n} "}.squeeze(' ').strip
     res = filter_through_white_list(res)
   end
-  
+
   def convert_to_number(string)
     string.to_f % 1 > 0 ? string.to_f : string.to_i
   end
-  
+
   def duration_units_list
     %w(seconds minutes hours days weeks months years)
   end
@@ -146,11 +179,11 @@ private
     when 'seconds'; 1
     end
   end
-  
+
   def error_message
     'Sorry, that duration could not be parsed'
   end
-  
+
   # Parse 3:41:59 and return 3 hours 41 minutes 59 seconds
   def filter_by_type(string)
     if string.gsub(' ', '') =~ /#{float_matcher}(:#{float_matcher})+/
@@ -165,11 +198,11 @@ private
     end
     res
   end
-  
+
   def float_matcher
     /[0-9]*\.?[0-9]+/
   end
-  
+
   # Get rid of unknown words and map found
   # words to defined time units
   def filter_through_white_list(string)
@@ -188,9 +221,9 @@ private
     end
     res.join(' ')
   end
-  
+
   def mappings
-    { 
+    {
       'seconds' => 'seconds',
       'second'  => 'seconds',
       'secs'    => 'seconds',
@@ -222,13 +255,13 @@ private
       'y'       => 'years'
     }
   end
-  
+
   def join_words
     ['and', 'with', 'plus']
   end
-  
+
   def white_list
     self.mappings.map {|k, v| k}
   end
-  
+
 end
