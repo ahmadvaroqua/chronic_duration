@@ -114,11 +114,13 @@ module ChronicDuration
 
     # Strip seconds if :chrono_leading_zeros_no_seconds
     if opts[:format] == :chrono_leading_zeros_no_seconds
-      [:years, :months, :days, :hours, :minutes].each do |t|
+      # [:years, :months, :days, :hours, :minutes].each do |t|
+      [:hours, :minutes].each do |t|
         result << humanize_time_unit( eval(t.to_s), dividers[t], dividers[:pluralize], dividers[:keep_zero] )
       end
     else
-      [:years, :months, :days, :hours, :minutes, :seconds].each do |t|
+      # [:years, :months, :days, :hours, :minutes, :seconds].each do |t|
+      [:hours, :minutes, :seconds].each do |t|
         result << humanize_time_unit( eval(t.to_s), dividers[t], dividers[:pluralize], dividers[:keep_zero] )
       end
     end
