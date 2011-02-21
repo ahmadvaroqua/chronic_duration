@@ -92,7 +92,8 @@ module ChronicDuration
         # Get rid of lead off zero
         # Get rid of trailing :
         # str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/^0/, '').gsub(/:$/, '')
-        str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/:$/, '')
+        # str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/^(00:)+/, '').gsub(/:$/, '')
+        str.gsub(/\b\d\b/) { |d| ("%02d" % d) }.gsub(/:$/, '')
       end
       joiner = ''
     when :chrono_leading_zeros_no_seconds
